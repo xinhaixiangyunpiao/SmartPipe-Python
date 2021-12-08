@@ -21,7 +21,7 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
         self.processes = processes
 
     # recv
-    def recvFromQueues(Qs, batch_size):
+    def recvFromQueues(self, Qs, batch_size):
         res = []
         for i in range(batch_size):
             for q in Qs:
@@ -37,7 +37,7 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
         return res
     
     # send
-    def sendToQueues(Qs, data, time_wait):
+    def sendToQueues(self, Qs, data, time_wait):
         for i in data:
             for q in Qs:
                 q.put(i, block=True, timeout=time_wait)
