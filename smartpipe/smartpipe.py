@@ -85,6 +85,18 @@ class CpuPipe(SmartPipe):
         # 直接在当前进程中执行
         process(input_data, paras)
 
+# StatefulCpuPipe
+class StatefulCpuPipe(SmartPipe):
+    # init
+    def __init__(self, pre_Qs, next_Qs, batch_size, processes):
+        super().__init__()
+        self.table = []
+    
+    # handle
+    def handle(self, process, paras, input_data):
+        # process会更新状态表
+        process(input_data, paras, self.table)
+
 # GpuPipe
 class GpuPipe(SmartPipe):
     # init
