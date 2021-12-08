@@ -4,7 +4,7 @@
 - Task
     - 每个Task是DAG图中的一个Node。
     - 可以是CPU任务，也可以是GPU任务。
-    - 默认模型的执行是GPU任务，其余操作（模型的前后处理，图片变换操作，表的修改操作）均为GPU任务。
+    - 默认模型的执行是GPU任务，其余操作（模型的前后处理，图片变换操作，表的修改操作）均为CPU任务。
     - 每个Task会不同大小的输入会有一个时间函数关系：t = f(input_size)
 - APP
     - ServiceType
@@ -107,3 +107,30 @@
 - json文件确定配置APP
     - 从库中取资源构建APP
     - 加入系统中执行
+
+# 编程设想
+- 要构建一个APP，主要就是构建多个进程组成的DAG图。
+    - 每个进程可以从模板创建，模板有以下几种：
+        - SmartPipe
+            - 一个智能的流水线基类。
+            -计时机制
+            - PipeHead，继承自PipeHead
+                - 只有输出，没有输入
+                - batch操作
+                - process
+                - 输出机制
+            - PipeBody
+                - 有输入也有输出
+                - batch操作、
+                - 输入输出机制
+                - CPUBody
+                    - process集合
+                - GPUBody
+                    - model
+                    - 托管至GPUAgent
+            - PipeTail
+                - 只有输入，没有输出
+                - batch操作
+                - process
+
+- 所有GPU相关的操作卸载到GPU上：GPUAgent
