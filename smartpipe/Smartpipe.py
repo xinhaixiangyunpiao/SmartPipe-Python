@@ -17,6 +17,7 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
         self.time_recv = 0
         self.time_process = 0
         self.time_send = 0
+        self.time_recv_data = 0
         # local
         self.pre_Qs = pre_Qs
         self.next_Qs = next_Qs
@@ -34,11 +35,14 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
             for q in self.pre_Qs:
                 while q.empty():
                     pass
+                time_start = time.perf_counter()
                 item = q.get()
+                self.time_recv_data += time.perf_counter() - time_start
                 line.append(item)
             if line[0] is Signal.End:
                 break
             res.append(line)
+            # print(self.name, self.time_recv_wait, self.time_recv_data)
         return res
     
     # send
@@ -61,6 +65,7 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
         if len(self.pre_Qs) == 0:
             print('\033[1;36m   Drop Number: \033[0m', self.drop_num)
         print('\033[1;36m   Time Recv: \033[0m', round(self.time_recv, 4), '\033[1;36ms\033[0m')
+        print('\033[1;36m   Time Recv Data: \033[0m', round(self.time_recv_data, 4), '\033[1;36ms\033[0m')
         print('\033[1;36m   Time Process: \033[0m', round(self.time_process, 4), '\033[1;36ms\033[0m')
         print('\033[1;36m   Time Send: \033[0m', round(self.time_send, 4), '\033[1;36ms\033[0m')
         print('\033[1;36m   Time Total: \033[0m', round(self.time_recv + self.time_process + self.time_send, 4), '\033[1;36ms\033[0m')
@@ -109,8 +114,8 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
 
             # local
             self.cnt += 1
-            # if self.cnt % 50 == 0:
-            #     print(self.name, self.cnt)
+            # if self.cnt % 10 == 0:
+            #     print(self.name, self.cnt, time.perf_counter())
 
         # send finish signal
         for q in self.next_Qs:

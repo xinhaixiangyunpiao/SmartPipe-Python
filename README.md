@@ -1,148 +1,113 @@
 # SmartPipe
 
-# 测试结果
-## 阶段一测试结果
+# 测试
+## 阶段一
+- 测试内容：测试SmartPipe中CPU相关API
+- 测试方式：测试一个简单的三阶段CPU APP
+- APP：视频流Resize
+- APP流程：
+    | Name   | Type | Stateful | Input | Output | Function       | Params       | State        |
+    | ------ | ---- | -------- | ----- | ------ | ---------------| ------------ | ------------ |
+    | Task0  | CPU  | Yes      | None  | Task1  | Image - Gen    | path,fps     | videoCapture |
+    | Task1  | CPU  | No       | Task0 | Task2  | Image - Resize | h,w          |              |
+    | Task2  | CPU  | Yes      | Task1 | None   | Image - Save   | path,h,w,fps | videoWriter  |
+- DAG：
+```
+    0 -> 1 -> 2
+```
+- 测试代码：
+![测试代码](https://github.com/xinhaixiangyunpiao/MarkDown_Image_Repository/blob/master/5.png?raw=true)
+- 预期结果：
+    - 根据Profile：
+        - Task0：gen 4k :
+- 测试结果：
+![测试结果](https://github.com/xinhaixiangyunpiao/MarkDown_Image_Repository/blob/master/6.png?raw=true)
 
-### 接收一个4K图片有可能成为瓶颈。这个时间无法隐藏，也是一个APP理论上能够做到的最小时延。
-### 这个最小时延应该测一下，与图片大小对应。   
-### 这个虽然影响时延，在不是瓶颈的时候并不会影响吞吐，如果此部分是瓶颈，则有一个吞吐上限，可以测出吞吐上限与图片大小关系，一般吞吐的上限与数据源产生速率一致，如果强行采用多个数据源。
-### 将接收时间拆分，一部分为等待时间，这部分是等着上级队列传结果，另一部分是接包时间，如果接包时间过长，可能这部分数据传输就成为瓶颈
-### 数据传输成为瓶颈应该怎么办。
-### 最终的最小时延应该
+## 阶段二
+- 测试内容：测试SmartPipe中Crop操作，并验证Smart程序的健壮性，验证batch_size
+- 测试方式：裁剪图片中的某个部分，输出视频
+- APP：裁剪中心区域
+- APP流程：
+    | Name   | Type | Stateful | Input | Output | Function     | Params      | State        |
+    | ------ | ---- | -------- | ----- | ------ | ------------ | ----------- | ------------ |
+    | Task0  | CPU  | Yes      | None  | Task1  | Image - Gen  | path,fps    | videoCapture |
+    | Task1  | CPU  | No       | Task0 | Task2  | Image - Crop | h1,w1,h2,w2 |              |
+    | Task2  | CPU  | Yes      | Task1 | None   | Image - Save | path        | videoWriter  |
+- DAG：
+```
+    0 -> 1 -> 2
+```
+- 测试结果：
 
-### 得到一个APP的平均时延，丢包率，以及平均吞吐。
+## 阶段三
+- 测试内容：测试多队列，以及多队列对性能的积极影响
+- 测试方式：resize的APP，resize使用多个进程去做。
+- APP：视频流resize并输入视频
+- APP流程：
+    | Name   | Type | Stateful | Input | Output | Function       | Params    | State        |
+    | ------ | ---- | -------- | ----- | ------ | -------------- | --------- | ------------ |
+    | Task0  | CPU  | Yes      | None  | Task1  | Image - Gen    | path,fps  | videoCapture |
+    | Task1  | CPU  | No       | Task0 | Task2  | Image - Resize | h,w       |              |
+    | Task2  | CPU  | Yes      | Task1 | None   | Image - Save   | path      | videoWriter  | 
+- DAG：
+```
+    0 -> 1 -> 2
+```
+- Execute：
+```
+    0 -> 1 -> 2
+         1
+```
+- 测试结果：
 
-# 核心结构
-- Task
-    - 每个Task是DAG图中的一个Node。
-    - 可以是CPU任务，也可以是GPU任务。
-    - 默认模型的执行是GPU任务，其余操作（模型的前后处理，图片变换操作，表的修改操作）均为CPU任务。
-    - 每个Task会不同大小的输入会有一个时间函数关系：t = f(input_size)
-- APP
-    - ServiceType
-        - request-guarantee
-        - best-effort
-    - Qutoa
-        - throughout
-        - time delay
-        - time delay shake
-        - packet loss
-    - Tasks
-        - Task[]
-        - DAG
-    - Request Frequency
+## 阶段四
+- 测试内容：测试SmartPipe中CPU和GPU相关API
+- 测试方式：构造一个车辆识别的APP，并成功运行。
+- APP：车辆图片裁剪并输出视频
+- APP流程：
+    | Name   | Type | Stateful | Input        | Output       | Function              | Params     | State        |
+    | ------ | ---- | -------- | ------------ | ------------ | --------------------- | ---------- | ------------ |
+    | Task0  | CPU  | Yes      | None         | Task1        | Image - Gen           | path,fps   | videoCapture |
+    | Task1  | CPU  | No       | Task0        | Task2        | Image - Resize        | h,w        |              |
+    | Task2  | CPU  | No       | Task1        | Task3        | yolo-preprocess       |            |              |
+    | Task3  | GPU  | No       | Task2        | Task4        | yolo-inference        |            |              |
+    | Task4  | CPU  | No       | Task3        | Task5        | yolo-postprocess      |            |              |
+    | Task5  | CPU  | No       | Task0, Task4 | Task6        | Image - Crop          |            |              |
+    | Task6  | CPU  | No       | Task5        | Task1        | Image - Resize        | h,w        |              |
+    | Task7  | CPU  | Yes      | Task6        | None         | Image - Save          | path       | videoWriter  |
+- DAG：
+```
+    0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
+```
+- 测试结果：
 
-- SmartPipe
-    - Pipe
-        - PipeHead
-            - 一种没有输出，只有输出的节点类型。
-        - PipeBody
-            - 有输出也有输出的节点类型。
-                - CPUBody：CPU任务
-                - GPUBody：GPU任务
-        - PipeTail
-            - 一种只有输出没有输入的节点类型。
-    - Smart
-        - 根据策略决定任务的batch_size。
-        - 根据资源决定任务的并行度。
 
-- Constraint
-    - Resource
-        - Memory
-        - CPU Number
-            - core number
-        - GPU Number
-        - CPU
-            - type
-        - GPU
-            - type
-            - memory
-    - Request
-        - quota
-            - throughtput: request reply number / min
-            - time delay: maximum acceptable time delay (ms)
-            - time delay shake: time delay standard deviation (ms)
-            - packet loss rate: percentage
-
-- Strategy
-    - Lazy: meet applications minimum requirements.
-    - Balance: meet requirement, auto adjust to improve performance.
-    - Strong: maximize node resource utilize.
-
-# 亮点
-- 提供了通用的APP任务框架，可以直接组合不同任务和数据源构建应用，函数式编程。
-- 可以自适应节点资源和目标约束，自动调节每个（进程）线程的体量（任务数，或者每个任务的batch_size）以在集群资源约束下完成对设定目标的自动优化。
-- GPU上的推理任务单独进程管理，减少Context开销。在PyTorch 1.7的基础上对单卡多模型执行进行了显存优化，结合调度算法隐藏模型参数传输开销。
-- 对APP提供 best-effort（受理APP，尽最大努力完成目标） 或者 request-guarantee（无法保证时不受理APP）的服务，可以自行设置，同时还可以设置APP的执行目标（吞吐，时延，抖动，丢包率）。
-
-# models
-- Deeplab-Xception
-- Deepsort
-- East
-- ESDR
-- FCN
-- GCN
-- MTCNN
-- openpose
-- unet
-- yolo
-
-# functions
-- Image
-    - Gen
-    - Crop
-    - Resize
-    - Show
-- Table
-    - Filter
-    - Select
-    - Merge
-    - Print
-- Model
-    - PreProcess
-    - Inference
-    - PostProcess
-
-# data sources
-- images
-
-- videos
-
-# 目前支持的Pipe
-- PipeHead
-- PipeBody
-    - CPUBody
-    - GPuBody
-- pipeTail
-
-# 编程模式
-- json文件确定配置APP
-    - 从库中取资源构建APP
-    - 加入系统中执行
-
-# 编程设想
-- 要构建一个APP，主要就是构建多个进程组成的DAG图。
-    - 每个进程可以从模板创建，模板有以下几种：
-        - SmartPipe
-            - 一个智能的流水线基类。
-            -计时机制
-            - PipeHead，继承自PipeHead
-                - 只有输出，没有输入
-                - batch操作
-                - process
-                - 输出机制
-            - PipeBody
-                - 有输入也有输出
-                - batch操作、
-                - 输入输出机制
-                - CPUBody
-                    - process集合
-                - GPUBody
-                    - model
-                    - 托管至GPUAgent
-            - PipeTail
-                - 只有输入，没有输出
-                - batch操作
-                - process
-
-- 所有GPU相关的操作卸载到GPU上：GPUAgent
+## 阶段五
+- 测试内容：多GPU任务,DAG图带分支测试
+- 测试方式：构建一个车牌号识别的APP
+- APP：车牌号识别，输出每一帧中的车辆车牌号
+- APP流程：
+    | Name   | Type | Stateful | Input        | Output       | Function              | Params     | State        |
+    | ------ | ---- | -------- | ------------ | ------------ | --------------------- | ---------- | ------------ |
+    | Task0  | CPU  | Yes      | None         | Task1, Task5 | Image - Gen           | path,fps   | VideoCapture |
+    | Task1  | CPU  | No       | Task0        | Task2        | Image - Resize        | h,w        |              |
+    | Task2  | CPU  | No       | Task1        | Task3        | yolo-preprocess       |            |              |
+    | Task3  | GPU  | No       | Task2        | Task4        | yolo-inference        |            |              |
+    | Task4  | CPU  | No       | Task3        | Task5        | yolo-postprocess      |            |              |
+    | Task5  | CPU  | No       | Task0, Task4 | Task6, Task9 | Image - Crop          |            |              |
+    | Task6  | CPU  | No       | Task5        | Task7        | Retinanet-preprocess  |            |              |
+    | Task7  | GPU  | No       | Task6        | Task8        | Retinanet-inference   |            |              |
+    | Task8  | CPU  | No       | Task7        | Task9        | Retinanet-postprocess |            |              |
+    | Task9  | CPU  | No       | Task5, Task8 | Task10       | Image - Crop          |            |              |
+    | Task10 | CPU  | No       | Task9        | Task11       | lprnet-preprocess     |            |              |
+    | Task11 | GPU  | No       | Task10       | Task12       | lprnet-inference      |            |              |
+    | Task12 | CPU  | No       | Task11       | Task13       | lprnet-postprocess    |            |              |
+    | Task13 | CPU  | Yes      | Task12       | Task14       | Table - Build         |            |              |
+    | Task14 | CPU  | No       | Task13       | None         | Table - Print         |            |              |
+- DAG：
+```
+                                ↑￣￣￣￣￣￣￣￣￣￣↓
+    0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14
+    ↓＿＿＿＿＿＿＿＿＿＿＿＿＿↑     
+```
+- 测试结果：

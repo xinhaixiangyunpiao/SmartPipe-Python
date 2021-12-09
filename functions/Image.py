@@ -32,6 +32,7 @@ class Resize:
             self.h, self.w = paras
         
         def loop(self, data):
+            # time.sleep(0.25)
             res = []
             for line in data:
                 img = cv2.resize(line[0], (self.w, self.h))
@@ -50,6 +51,7 @@ class Save:
             self.videoWriter = cv2.VideoWriter(self.path, cv2.VideoWriter_fourcc('I', '4', '2', '0'), self.fps, (self.w, self.h))
 
         def loop(self, data):
+            # time.sleep(0.25)
             for line in data:
                 self.videoWriter.write(line[0])
             return None
@@ -57,6 +59,20 @@ class Save:
         def finish(self):
             self.videoWriter.release()
 
+
+class Trans:
+    # tans
+    class trans:
+        def __init__(self, paras):
+            pass
+        
+        # loop
+        def loop(self, data):
+            return data
+        
+        # finish
+        def finish(self):
+            pass
 # # Crop相关
 # class Crop:
 #     def crop(data, paras):

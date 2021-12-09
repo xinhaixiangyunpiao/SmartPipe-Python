@@ -8,6 +8,48 @@ from models import Model
 # select test
 TEST_STAGE = 0
 
+# time delay test
+if TEST_STAGE == -1:
+    # Queue
+    size = 200
+    q_0_1 = Queue(maxsize=size)
+    q_1_2 = Queue(maxsize=size)
+    q_2_3 = Queue(maxsize=size)
+    q_3_4 = Queue(maxsize=size)
+    q_4_5 = Queue(maxsize=size)
+    q_5_6 = Queue(maxsize=size)
+    q_6_7 = Queue(maxsize=size)
+    q_7_8 = Queue(maxsize=size)
+    q_8_9 = Queue(maxsize=size)
+    q_9_10 = Queue(maxsize=size)
+
+    # CpuPipe
+    video_path = "/data/lx/SmartPipe/data_source/videos/out_960*540.avi"
+    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,10]]])
+    task1 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[q_2_3], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task3 = CpuPipe(pre_Qs=[q_2_3], next_Qs=[q_3_4], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task4 = CpuPipe(pre_Qs=[q_3_4], next_Qs=[q_4_5], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task5 = CpuPipe(pre_Qs=[q_4_5], next_Qs=[q_5_6], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task6 = CpuPipe(pre_Qs=[q_5_6], next_Qs=[q_6_7], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task7 = CpuPipe(pre_Qs=[q_6_7], next_Qs=[q_7_8], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task8 = CpuPipe(pre_Qs=[q_7_8], next_Qs=[q_8_9], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task9 = CpuPipe(pre_Qs=[q_8_9], next_Qs=[q_9_10], batch_size=1, processes=[[Image.Trans.trans, []]])
+    task10 = CpuPipe(pre_Qs=[q_9_10], next_Qs=[], batch_size=1, processes=[[Image.Trans.trans, []]])
+    
+    # start
+    task0.start()
+    task1.start()
+    task2.start()
+    task3.start()
+    task4.start()
+    task5.start()
+    task6.start()
+    task7.start()
+    task8.start()
+    task9.start()
+    task10.start()
+
 """
     阶段一测试
     测试内容：测试SmartPipe中CPU相关API
@@ -29,11 +71,11 @@ if TEST_STAGE == 0:
     q_1_2 = Queue(maxsize=size)
 
     # CpuPipe
-    video_path = "/data/lx/SmartPipe/data_source/videos/new.webm"
-    save_path = "/data/lx/SmartPipe/data_source/videos/out2.avi"
-    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,10]]])
+    video_path = "/data/lx/SmartPipe/data_source/videos/road.webm"
+    save_path = "/data/lx/SmartPipe/data_source/videos/out.avi"
+    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,25]]])
     task1 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Resize.resize, [540,960]]])
-    task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[], batch_size=1, processes=[[Image.Save.save, [save_path,540,960,10]]])
+    task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[], batch_size=1, processes=[[Image.Save.save, [save_path,540,960,25]]])
 
     # start 
     task0.start()
@@ -60,8 +102,7 @@ if TEST_STAGE == 1:
     q_1_2 = Queue(maxsize=size)
 
     # CpuPipe
-    video_path = "/data/lx/SmartPipe/data_source/videos/road.webm"
-    save_path = "/data/lx/SmartPipe/data_source/videos/out1.avi"
+    video_path = "/data/lx/SmartPipe/data_source/videos/out_1902*1080.avi.webm"
     task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,20]]])
     task1 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Crop.crop_with_params, [h1,h2,w1,w2]]])
     task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[], batch_size=1, processes=[[Image.Save.save, [save_path]]])
