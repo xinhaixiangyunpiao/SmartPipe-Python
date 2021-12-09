@@ -5,6 +5,7 @@ from smartpipe import CpuPipe, GpuPipe, GpuAgent
 from functions import Image, Table
 from models import Model
 
+# select test
 TEST_STAGE = 0
 
 """
@@ -13,10 +14,10 @@ TEST_STAGE = 0
     测试方式：测试一个简单的三阶段CPU APP
     APP：视频流Resize
     APP流程：
-        | Name   | Type | Stateful | Input | Output | Function       | Params    | State        |
-        | Task0  | CPU  | Yes      | None  | Task1  | Image - Gen    | path,fps  | videoCapture |
-        | Task1  | CPU  | No       | Task0 | Task2  | Image - Resize | h,w       |              |
-        | Task2  | CPU  | Yes      | Task1 | None   | Image - Save   | path      | videoWriter  |
+        | Name   | Type | Stateful | Input | Output | Function       | Params       | State        |
+        | Task0  | CPU  | Yes      | None  | Task1  | Image - Gen    | path,fps     | videoCapture |
+        | Task1  | CPU  | No       | Task0 | Task2  | Image - Resize | h,w          |              |
+        | Task2  | CPU  | Yes      | Task1 | None   | Image - Save   | path,h,w,fps | videoWriter  |
     DAG：
         0 -> 1 -> 2
 """
@@ -29,17 +30,85 @@ if TEST_STAGE == 0:
 
     # CpuPipe
     video_path = "/data/lx/SmartPipe/data_source/videos/new.webm"
-    save_path = "/data/lx/SmartPipe/data_source/videos/out.avi"
-    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,25]]])
+    save_path = "/data/lx/SmartPipe/data_source/videos/out2.avi"
+    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,10]]])
     task1 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Resize.resize, [540,960]]])
+    task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[], batch_size=1, processes=[[Image.Save.save, [save_path,540,960,10]]])
+
+    # start 
+    task0.start()
+    task1.start()
+    task2.start()
+
+""" 
+    阶段二测试
+    测试内容：测试SmartPipe中Crop操作，并验证Smart程序的健壮性，验证batch_size
+    测试方式：裁剪图片中的某个部分，输出视频
+    APP：裁剪中心区域
+    APP流程：
+        | Name   | Type | Stateful | Input | Output | Function     | Params      | State        |
+        | Task0  | CPU  | Yes      | None  | Task1  | Image - Gen  | path,fps    | videoCapture |
+        | Task1  | CPU  | No       | Task0 | Task2  | Image - Crop | h1,w1,h2,w2 |              |
+        | Task2  | CPU  | Yes      | Task1 | None   | Image - Save | path        | videoWriter  |
+    DAG：
+        0 -> 1 -> 2
+"""
+if TEST_STAGE == 1:
+    # Queue
+    size = 200
+    q_0_1 = Queue(maxsize=size)
+    q_1_2 = Queue(maxsize=size)
+
+    # CpuPipe
+    video_path = "/data/lx/SmartPipe/data_source/videos/road.webm"
+    save_path = "/data/lx/SmartPipe/data_source/videos/out1.avi"
+    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,20]]])
+    task1 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Crop.crop_with_params, [h1,h2,w1,w2]]])
     task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[], batch_size=1, processes=[[Image.Save.save, [save_path]]])
+
     # start 
     task0.start()
     task1.start()
     task2.start()
 
 """
-    阶段二测试
+    阶段三测试
+    测试内容：测试多队列，以及多队列对性能的积极影响
+    测试方式：resize的APP，resize使用多个进程去做。
+    APP：视频流resize并输入视频
+    APP流程：
+        | Name   | Type | Stateful | Input | Output | Function       | Params    | State        |
+        | Task0  | CPU  | Yes      | None  | Task1  | Image - Gen    | path,fps  | videoCapture |
+        | Task1  | CPU  | No       | Task0 | Task2  | Image - Resize | h,w       |              |
+        | Task2  | CPU  | Yes      | Task1 | None   | Image - Save   | path      | videoWriter  | 
+    DAG：
+        0 -> 1 -> 2
+    Execute:
+        0 -> 1 -> 2
+             1
+"""
+if TEST_STAGE == 2:
+    # Queue
+    size = 200
+    q_0_1 = Queue(maxsize=size)
+    q_1_2 = Queue(maxsize=size)
+
+    # CpuPipe
+    video_path = "/data/lx/SmartPipe/data_source/videos/new.webm"
+    save_path = "/data/lx/SmartPipe/data_source/videos/out.avi"
+    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,20]]])
+    task1_0 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Resize.resize, [540,960]]])
+    task1_1 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Resize.resize, [540,960]]])
+    task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[], batch_size=1, processes=[[Image.Save.save, [save_path]]])
+
+    # start 
+    task0.start()
+    task1_0.start()
+    task1_1.start()
+    task2.start()
+
+"""
+    阶段四测试
     测试内容：测试SmartPipe中CPU和GPU相关API
     测试方式：构造一个车辆识别的APP，并成功运行。
     APP：车辆图片裁剪并输出视频
@@ -57,7 +126,25 @@ if TEST_STAGE == 0:
         0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 """
 if TEST_STAGE == 1:
-    pass
+    # Queue
+    size = 0
+    q_0_1 = Queue(maxsize=size)
+    q_1_2 = Queue(maxsize=size)
+    q_2_3 = Queue(maxsize=size)
+    q_3_4 = Queue(maxsize=size)
+    q_4_5 = Queue(maxsize=size)
+    q_5_6 = Queue(maxsize=size)
+    q_6_7 = Queue(maxsize=size)
+    q_7_8 = Queue(maxsize=size)
+
+    # CpuPipe and GpuPipe
+    video_path = "/data/lx/SmartPipe/data_source/videos/new.webm"
+    save_path = "/data/lx/SmartPipe/data_source/videos/out.avi"
+    task0 = CpuPipe(pre_Qs=[], next_Qs=[q_0_1], batch_size=1, processes=[[Image.Gen.genFromVideo, [video_path,25]]])
+    task1 = CpuPipe(pre_Qs=[q_0_1], next_Qs=[q_1_2], batch_size=1, processes=[[Image.Resize.resize, [540,960]]])
+    task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[q_2_3], batch_size=1, processes=[[Model.yolo.preprocess, []]])
+    task2 = CpuPipe(pre_Qs=[q_1_2], next_Qs=[], batch_size=1, processes=[[Image.Save.save, [save_path]]])
+
 
 """
     阶段三测试

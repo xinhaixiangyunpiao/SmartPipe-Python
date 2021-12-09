@@ -30,11 +30,10 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
             return None
         res = []
         for i in range(self.batch_size):
+            line = []
             for q in self.pre_Qs:
                 while q.empty():
                     pass
-            line = []
-            for q in self.pre_Qs:
                 item = q.get()
                 line.append(item)
             if line[0] is Signal.End:
@@ -57,8 +56,10 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
 
     # print result
     def print_result(self):
-        print('\033[1;35m' + self.name+ ':\033[0m')
-        print('\033[1;36m   Total Count: \033[0m', self.cnt)
+        print('\033[1;35m' + self.name + ':\033[0m')
+        print('\033[1;36m   Total Number: \033[0m', self.cnt)
+        if len(self.pre_Qs) == 0:
+            print('\033[1;36m   Drop Number: \033[0m', self.drop_num)
         print('\033[1;36m   Time Recv: \033[0m', round(self.time_recv, 4), '\033[1;36ms\033[0m')
         print('\033[1;36m   Time Process: \033[0m', round(self.time_process, 4), '\033[1;36ms\033[0m')
         print('\033[1;36m   Time Send: \033[0m', round(self.time_send, 4), '\033[1;36ms\033[0m')
@@ -78,9 +79,9 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
         # main loop
         while True:
             # recv
-            time_start = time.time()
+            time_start = time.perf_counter()
             data = self.recvFromQueues()
-            self.time_recv += time.time() - time_start
+            self.time_recv += time.perf_counter() - time_start
 
             # judge quit - normal
             if data is not None:
@@ -88,10 +89,10 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
                     break
 
             # process
-            time_start = time.time()
+            time_start = time.perf_counter()
             for obj in self.function_objs:
                 data = self.handle(obj, data)
-            self.time_process += time.time() - time_start
+            self.time_process += time.perf_counter() - time_start
 
             # judge quit - gen
             if len(self.next_Qs) != 0:
@@ -99,19 +100,25 @@ class SmartPipe(Process, metaclass=abc.ABCMeta):
                     break
 
             # send
-            time_start = time.time()
+            time_start = time.perf_counter()
             if len(self.pre_Qs) == 0:
                 self.sendToQueues(data, drop=True)
             else:
                 self.sendToQueues(data, time_wait=3)
-            self.time_send += time.time() - time_start
+            self.time_send += time.perf_counter() - time_start
 
             # local
             self.cnt += 1
+            # if self.cnt % 50 == 0:
+            #     print(self.name, self.cnt)
 
         # send finish signal
         for q in self.next_Qs:
             q.put(Signal.End, block=True, timeout=3)
+
+        # release
+        for obj in self.function_objs:
+            obj.finish()
         
         # print result
         self.print_result()

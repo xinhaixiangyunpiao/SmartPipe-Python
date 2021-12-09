@@ -8,16 +8,21 @@ class Gen:
         def __init__(self, paras):
             self.path, self.fps = paras
             self.cap = cv2.VideoCapture(self.path)
+            self.time_start = time.perf_counter()
+            self.cnt = 0
         
         def loop(self):
-            time_start = time.perf_counter()
             ret, frame = self.cap.read()
             if ret:
-                while time.perf_counter() - time_start <= 1/(float)(self.fps):
+                while time.perf_counter() - self.time_start <= self.cnt/(float)(self.fps):
                     pass
-                return frame
+                self.cnt += 1
+                return [frame]
             else:
                 return None
+
+        def finish(self):
+            self.cap.release()
 
 # Resize相关
 class Resize:
@@ -29,22 +34,28 @@ class Resize:
         def loop(self, data):
             res = []
             for line in data:
-                img = cv2.resize(line[0], (self.h, self.w))
+                img = cv2.resize(line[0], (self.w, self.h))
                 res.append(img)
             return res
+        
+        def finish(self):
+            pass
 
 # Save相关
 class Save:
     # save
     class save:
         def __init__(self, paras):
-            self.path = paras[0]
-            self.videoWriter = cv2.VideoWriter(self.path, cv2.VideoWriter_fourcc(*'XVID'), 25, (960, 540), True)
+            self.path, self.h, self.w, self.fps = paras
+            self.videoWriter = cv2.VideoWriter(self.path, cv2.VideoWriter_fourcc('I', '4', '2', '0'), self.fps, (self.w, self.h))
 
         def loop(self, data):
             for line in data:
                 self.videoWriter.write(line[0])
             return None
+
+        def finish(self):
+            self.videoWriter.release()
 
 # # Crop相关
 # class Crop:
